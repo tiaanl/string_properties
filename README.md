@@ -1,2 +1,2 @@
-string_properties
+String Properties
 =================
