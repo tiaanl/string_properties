@@ -1,4 +1,4 @@
-// Copyright (c) 2014 Tiaan Louw
+// Copyright (c) 2020 Tiaan Louw
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -39,11 +39,10 @@ private:
 };
 
 DEFINE_META_OBJECT(Obj)
-    .AddProperty<Obj, std::string>("name", "name description",
-                                   meta::PROPERTY_EDITOR_STRING, &Obj::GetName)
-    .AddProperty<Obj, int>("count", "count description",
-                           meta::PROPERTY_EDITOR_INTEGER, &Obj::GetCount,
-                           &Obj::SetCount);
+    .AddProperty<Obj, std::string>("name", "name description", meta::PROPERTY_EDITOR_STRING,
+                                   &Obj::GetName)
+    .AddProperty<Obj, int>("count", "count description", meta::PROPERTY_EDITOR_INTEGER,
+                           &Obj::GetCount, &Obj::SetCount);
 
 class AnotherObj : public Obj {
   DECLARE_META_OBJECT(AnotherObj);
@@ -62,10 +61,8 @@ private:
 
 DEFINE_META_OBJECT(AnotherObj)
     .AddBase(Obj::GetStaticMetaBuilder())
-    .AddProperty<AnotherObj, bool>("visible", "visible description",
-                                   meta::PROPERTY_EDITOR_STRING,
-                                   &AnotherObj::IsVisible,
-                                   &AnotherObj::SetVisible);
+    .AddProperty<AnotherObj, bool>("visible", "visible description", meta::PROPERTY_EDITOR_STRING,
+                                   &AnotherObj::IsVisible, &AnotherObj::SetVisible);
 
 int main() {
   Obj obj("obj1");
