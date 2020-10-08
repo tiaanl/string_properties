@@ -28,7 +28,7 @@ namespace meta::detail {
 // MetaConverter<>
 
 template <typename T> struct MetaConverter {
-  static bool ToString(const T &inValue, std::string *outValue) {
+  static bool ToString(const T& inValue, std::string* outValue) {
     assert(outValue);
     std::stringstream iss;
     iss << inValue;
@@ -36,7 +36,7 @@ template <typename T> struct MetaConverter {
     return true;
   }
 
-  static bool FromString(const std::string &inValue, T *outValue) {
+  static bool FromString(const std::string& inValue, T* outValue) {
     assert(outValue);
     std::stringstream oss(inValue);
     oss >> *outValue;
@@ -47,12 +47,12 @@ template <typename T> struct MetaConverter {
 // We give bool it's own MetaConverter so we can convert "true" and "false" into
 // boolean values.
 template <> struct MetaConverter<bool> {
-  static bool ToString(bool inValue, std::string *outValue) {
+  static bool ToString(bool inValue, std::string* outValue) {
     *outValue = inValue ? "true" : "false";
     return true;
   }
 
-  static bool FromString(const std::string &inValue, bool *outValue) {
+  static bool FromString(const std::string& inValue, bool* outValue) {
     *outValue = (inValue == "true" || inValue == "1");
     return true;
   }
@@ -61,8 +61,8 @@ template <> struct MetaConverter<bool> {
 // MetaPropertyTraits<>
 
 template <typename C, typename T> struct MetaPropertyTraits {
-  typedef const T &(C::*GetterType)() const;
-  typedef void (C::*SetterType)(const T &);
+  typedef const T& (C::*GetterType)() const;
+  typedef void (C::*SetterType)(const T&);
 };
 
 template <typename C> struct MetaPropertyTraits<C, bool> {

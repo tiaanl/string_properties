@@ -18,6 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#include <iostream>
 #include <utility>
 
 #include "meta/meta.h"
@@ -28,10 +29,16 @@ class Obj : public meta::MetaObject {
 public:
   explicit Obj(std::string name) : _name(std::move(name)), _count(0) {}
 
-  const std::string &GetName() const { return _name; }
+  const std::string& GetName() const {
+    return _name;
+  }
 
-  void SetCount(int value) { _count = value; }
-  int GetCount() const { return _count; }
+  void SetCount(int value) {
+    _count = value;
+  }
+  int GetCount() const {
+    return _count;
+  }
 
 private:
   std::string _name;
@@ -39,58 +46,63 @@ private:
 };
 
 DEFINE_META_OBJECT(Obj)
-    .AddProperty<Obj, std::string>("name", "name description", meta::PROPERTY_EDITOR_STRING,
+    .addProperty<Obj, std::string>("name", "name description", meta::PropertyEditorType::String,
                                    &Obj::GetName)
-    .AddProperty<Obj, int>("count", "count description", meta::PROPERTY_EDITOR_INTEGER,
+    .addProperty<Obj, int>("count", "count description", meta::PropertyEditorType::Integer,
                            &Obj::GetCount, &Obj::SetCount);
 
 class AnotherObj : public Obj {
   DECLARE_META_OBJECT(AnotherObj);
 
 public:
-  explicit AnotherObj(const std::string &name) : Obj(name), _visible(false) {}
+  explicit AnotherObj(const std::string& name) : Obj(name), _visible(false) {}
 
   ~AnotherObj() override = default;
 
-  bool IsVisible() const { return _visible; }
-  void SetVisible(bool visible) { _visible = visible; }
+  bool IsVisible() const {
+    return _visible;
+  }
+  void SetVisible(bool visible) {
+    _visible = visible;
+  }
 
 private:
   bool _visible;
 };
 
 DEFINE_META_OBJECT(AnotherObj)
-    .AddBase(Obj::GetStaticMetaBuilder())
-    .AddProperty<AnotherObj, bool>("visible", "visible description", meta::PROPERTY_EDITOR_STRING,
-                                   &AnotherObj::IsVisible, &AnotherObj::SetVisible);
+    .addBase(Obj::GetStaticMetaBuilder())
+    .addProperty<AnotherObj, bool>("visible", "visible description",
+                                   meta::PropertyEditorType::String, &AnotherObj::IsVisible,
+                                   &AnotherObj::SetVisible);
 
 int main() {
   Obj obj("obj1");
 
   std::string testValue;
 
-  assert(obj.Get("name", &testValue));
+  assert(obj.get("name", &testValue));
   assert(std::string("obj1") == testValue);
 
-  assert(!obj.Set("name", "new name"));
+  assert(!obj.set("name", "new name"));
 
-  assert(obj.Set("count", "50"));
+  assert(obj.set("count", "50"));
   assert(50 == obj.GetCount());
 
-  assert(obj.Get("count", &testValue));
+  assert(obj.get("count", &testValue));
   assert(std::string("50") == testValue);
 
   AnotherObj anotherObj("anotherObj1");
 
-  assert(anotherObj.Get("name", &testValue));
+  assert(anotherObj.get("name", &testValue));
   assert(std::string("anotherObj1") == testValue);
 
-  assert(!anotherObj.Set("name", "new another obj name"));
+  assert(!anotherObj.set("name", "new another obj name"));
 
-  assert(anotherObj.Set("visible", "false"));
+  assert(anotherObj.set("visible", "false"));
   assert(!anotherObj.IsVisible());
 
-  assert(anotherObj.Get("visible", &testValue));
+  assert(anotherObj.get("visible", &testValue));
   assert(std::string("false") == testValue);
 
   return 0;

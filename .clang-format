@@ -6,3 +6,4 @@ AllowShortIfStatementsOnASingleLine: Never
 AllowShortLambdasOnASingleLine: None
 AllowShortLoopsOnASingleLine: false
 ColumnLimit: 100
+PointerAlignment: Left

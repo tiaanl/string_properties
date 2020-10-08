@@ -22,9 +22,11 @@
 #define META_H_
 
 #include <cassert>
+#include <functional>
 #include <memory>
 #include <set>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -35,13 +37,26 @@ namespace meta {
 
 class MetaBuilder;
 
+constexpr size_t hashName(std::string_view name) {
+  if (name.empty()) {
+    return 5381u;
+  }
+
+  auto hash = static_cast<size_t>(static_cast<unsigned char>(name[0]));
+  for (size_t i = 1; i < name.size(); ++i) {
+    hash += 33 * name[i];
+  }
+
+  return hash;
+}
+
 class MetaObject {
 public:
   virtual ~MetaObject();
 
-  virtual bool Get(const std::string &name, std::string *outValue) = 0;
-  virtual bool Set(const std::string &name, const std::string &value) = 0;
-  virtual const MetaBuilder *GetMetaBuilder() const = 0;
+  virtual bool get(std::string_view name, std::string* outValue) = 0;
+  virtual bool set(std::string_view name, const std::string& value) = 0;
+  virtual const MetaBuilder* getMetaBuilder() const = 0;
 };
 
 struct PropertyBase {
@@ -51,15 +66,15 @@ struct PropertyBase {
 
   virtual ~PropertyBase();
 
-  virtual bool Get(MetaObject *, std::string *) {
+  virtual bool get(MetaObject*, std::string*) {
     return false;
   }
 
-  virtual bool Set(MetaObject *, const std::string &) {
+  virtual bool set(MetaObject*, const std::string&) {
     return false;
   }
 
-  virtual bool IsReadOnly() const {
+  virtual bool isReadOnly() const {
     return false;
   }
 
@@ -73,11 +88,11 @@ template <typename PropertyType> struct Invoker {
   using ClassType = typename PropertyType::ClassType;
   using Type = typename PropertyType::Type;
 
-  using SetType = bool (*)(PropertyBase *, ClassType *, const std::string &);
-  using GetType = bool (*)(PropertyBase *, ClassType *, std::string *);
+  using SetType = bool (*)(PropertyBase*, ClassType*, const std::string&);
+  using GetType = bool (*)(PropertyBase*, ClassType*, std::string*);
 
-  static bool Get(PropertyBase *p, ClassType *obj, std::string *outValue) {
-    auto *prop = static_cast<PropertyType *>(p);
+  static bool get(PropertyBase* p, ClassType* obj, std::string* outValue) {
+    auto* prop = static_cast<PropertyType*>(p);
 
     // No need to check if a getter is set to nullptr, because our system
     // doesn't allow a nullptr getter.
@@ -86,10 +101,11 @@ template <typename PropertyType> struct Invoker {
     return detail::MetaConverter<Type>::ToString(x, outValue);
   }
 
-  static bool Set(PropertyBase *p, ClassType *obj, const std::string &value) {
-    auto *prop = static_cast<PropertyType *>(p);
-    if (!prop->setter)
+  static bool set(PropertyBase* p, ClassType* obj, const std::string& value) {
+    auto* prop = static_cast<PropertyType*>(p);
+    if (!prop->setter) {
       return false;
+    }
 
     Type x;
     if (detail::MetaConverter<Type>::FromString(value, &x)) {
@@ -117,23 +133,23 @@ struct Property : public PropertyBase {
   using InvokerSetType = typename InvokerType::SetType;
 
   Property(GetterType getter, SetterType setter) : getter(getter), setter(setter) {
-    invokerGet = reinterpret_cast<FuncStorage>(&InvokerType::Get);
-    invokerSet = reinterpret_cast<FuncStorage>(&InvokerType::Set);
+    invokerGet = reinterpret_cast<FuncStorage>(&InvokerType::get);
+    invokerSet = reinterpret_cast<FuncStorage>(&InvokerType::set);
   }
 
   ~Property() override = default;
 
-  bool Get(MetaObject *obj, std::string *outValue) override {
+  bool get(MetaObject* obj, std::string* outValue) override {
     auto func = reinterpret_cast<InvokerGetType>(invokerGet);
-    return func(this, static_cast<ClassType *>(obj), outValue);
+    return func(this, static_cast<ClassType*>(obj), outValue);
   }
 
-  bool Set(MetaObject *obj, const std::string &value) override {
+  bool set(MetaObject* obj, const std::string& value) override {
     auto func = reinterpret_cast<InvokerSetType>(invokerSet);
-    return func(this, static_cast<ClassType *>(obj), value);
+    return func(this, static_cast<ClassType*>(obj), value);
   }
 
-  bool IsReadOnly() const override {
+  bool isReadOnly() const override {
     return !setter;
   }
 
@@ -141,15 +157,10 @@ struct Property : public PropertyBase {
   SetterType setter;
 };
 
-template <typename C, typename T>
-Property<C, T> MakeProperty(const T &(C::*getter)() const, void (C::*setter)(const T &)) {
-  return Property<C, T>(getter, setter);
-}
-
-enum PropertyEditorType {
-  PROPERTY_EDITOR_STRING,
-  PROPERTY_EDITOR_INTEGER,
-  PROPERTY_EDITOR_BOOL,
+enum class PropertyEditorType {
+  String,
+  Integer,
+  Bool,
 };
 
 struct MetaEntry {
@@ -170,40 +181,41 @@ class MetaBuilder {
 public:
   MetaBuilder();
 
-  MetaBuilder &AddBase(const MetaBuilder *metaBuilder) {
-    _bases.push_back(metaBuilder);
+  MetaBuilder& addBase(const MetaBuilder* metaBuilder) {
+    m_bases.push_back(metaBuilder);
     return *this;
   }
 
   template <typename C, typename T>
-  MetaBuilder &AddProperty(const std::string &name, const std::string &description,
+  MetaBuilder& addProperty(std::string_view name, std::string_view description,
                            PropertyEditorType editorType,
                            typename detail::MetaPropertyTraits<C, T>::GetterType getter) {
-    _properties.insert(PropertiesType::value_type(
-        name, MetaEntry(name, description, editorType,
-                        std::make_shared<Property<C, T>>(getter, nullptr))));
+    m_properties.insert(PropertiesType::value_type(
+        hashName(name),
+        MetaEntry({name.begin(), name.end()}, {description.begin(), description.end()}, editorType,
+                  std::make_shared<Property<C, T>>(getter, nullptr))));
     return *this;
   }
 
   template <typename C, typename T>
-  MetaBuilder &AddProperty(const std::string &name, const std::string &description,
+  MetaBuilder& addProperty(const std::string& name, const std::string& description,
                            PropertyEditorType editorType,
                            typename detail::MetaPropertyTraits<C, T>::GetterType getter,
                            typename detail::MetaPropertyTraits<C, T>::SetterType setter) {
-    _properties.insert(PropertiesType::value_type(
-        name, MetaEntry(name, description, editorType,
-                        std::make_shared<Property<C, T>>(getter, setter))));
+    m_properties.insert(PropertiesType::value_type(
+        hashName(name), MetaEntry(name, description, editorType,
+                                  std::make_shared<Property<C, T>>(getter, setter))));
     return *this;
   }
 
-  const MetaEntry *GetProperty(const std::string &name) const {
-    auto it = _properties.find(name);
-    if (it != _properties.end())
+  const MetaEntry* getProperty(std::string_view name) const {
+    auto it = m_properties.find(hashName(name));
+    if (it != m_properties.end())
       return &it->second;
 
     // The property wasn't found in this class, so let's check the base classes.
-    for (auto _base : _bases) {
-      const MetaEntry *entry = _base->GetProperty(name);
+    for (auto base : m_bases) {
+      const MetaEntry* entry = base->getProperty(name);
       if (entry)
         return entry;
     }
@@ -211,54 +223,58 @@ public:
     return nullptr;
   }
 
-  void GetListOfProperties(std::set<std::string> *outNames) const {
+  void getListOfProperties(std::set<std::string>* outNames) const {
     assert(outNames);
-    for (const auto &entry : _properties)
-      outNames->insert(entry.first);
 
-    for (const auto &base : _bases)
-      base->GetListOfProperties(outNames);
+    for (const auto& entry : m_properties) {
+      outNames->insert(entry.second.name);
+    }
+
+    for (const auto& base : m_bases) {
+      base->getListOfProperties(outNames);
+    }
   }
 
 private:
-  using PropertiesType = std::unordered_map<std::string, MetaEntry>;
-  using BasesType = std::vector<const MetaBuilder *>;
+  using PropertiesType = std::unordered_map<size_t, MetaEntry>;
+  using BasesType = std::vector<const MetaBuilder*>;
 
-  PropertiesType _properties;
-
-  BasesType _bases;
+  PropertiesType m_properties;
+  BasesType m_bases;
 };
 
 } // namespace meta
 
 #define DECLARE_META_OBJECT(ClassName)                                                             \
 private:                                                                                           \
-  static const meta::MetaBuilder _##ClassName##_properties;                                        \
+  static const meta::MetaBuilder m_##ClassName##_properties;                                       \
                                                                                                    \
 public:                                                                                            \
-  static const meta::MetaBuilder *GetStaticMetaBuilder() {                                         \
-    return &_##ClassName##_properties;                                                             \
+  static const meta::MetaBuilder* GetStaticMetaBuilder() {                                         \
+    return &m_##ClassName##_properties;                                                            \
   }                                                                                                \
-  bool Get(const std::string &, std::string *) override;                                           \
-  bool Set(const std::string &, const std::string &) override;                                     \
-  const meta::MetaBuilder *GetMetaBuilder() const override
+  bool get(std::string_view, std::string*) override;                                               \
+  bool set(std::string_view, const std::string&) override;                                         \
+  const meta::MetaBuilder* getMetaBuilder() const override
 
 #define DEFINE_META_OBJECT(ClassName)                                                              \
-  bool ClassName::Get(const std::string &name, std::string *outValue) {                            \
-    const meta::MetaEntry *entry = _##ClassName##_properties.GetProperty(name);                    \
-    if (!entry)                                                                                    \
+  bool ClassName::get(std::string_view name, std::string* outValue) {                              \
+    const meta::MetaEntry* entry = m_##ClassName##_properties.getProperty(name);                   \
+    if (!entry) {                                                                                  \
       return false;                                                                                \
-    return entry->prop->Get(this, outValue);                                                       \
+    }                                                                                              \
+    return entry->prop->get(this, outValue);                                                       \
   }                                                                                                \
-  bool ClassName::Set(const std::string &name, const std::string &value) {                         \
-    const meta::MetaEntry *entry = _##ClassName##_properties.GetProperty(name);                    \
-    if (!entry)                                                                                    \
+  bool ClassName::set(std::string_view name, const std::string& value) {                           \
+    const meta::MetaEntry* entry = m_##ClassName##_properties.getProperty(name);                   \
+    if (!entry) {                                                                                  \
       return false;                                                                                \
-    return entry->prop->Set(this, value);                                                          \
+    }                                                                                              \
+    return entry->prop->set(this, value);                                                          \
   }                                                                                                \
-  const meta::MetaBuilder *ClassName::GetMetaBuilder() const {                                     \
-    return &_##ClassName##_properties;                                                             \
+  const meta::MetaBuilder* ClassName::getMetaBuilder() const {                                     \
+    return &m_##ClassName##_properties;                                                            \
   }                                                                                                \
-  const meta::MetaBuilder ClassName::_##ClassName##_properties = meta::MetaBuilder()
+  const meta::MetaBuilder ClassName::m_##ClassName##_properties = meta::MetaBuilder {}
 
 #endif // META_H_
