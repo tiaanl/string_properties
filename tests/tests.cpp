@@ -27,54 +27,54 @@ class Obj : public meta::MetaObject {
   DECLARE_META_OBJECT(Obj);
 
 public:
-  explicit Obj(std::string name) : _name(std::move(name)), _count(0) {}
+  explicit Obj(std::string name) : m_name(std::move(name)), m_count(0) {}
 
-  const std::string& GetName() const {
-    return _name;
+  const std::string& getName() const {
+    return m_name;
   }
 
-  void SetCount(int value) {
-    _count = value;
+  void setCount(int value) {
+    m_count = value;
   }
-  int GetCount() const {
-    return _count;
+  int getCount() const {
+    return m_count;
   }
 
 private:
-  std::string _name;
-  int _count;
+  std::string m_name;
+  int m_count;
 };
 
 DEFINE_META_OBJECT(Obj)
     .addProperty<Obj, std::string>("name", "name description", meta::PropertyEditorType::String,
-                                   &Obj::GetName)
+                                   &Obj::getName)
     .addProperty<Obj, int>("count", "count description", meta::PropertyEditorType::Integer,
-                           &Obj::GetCount, &Obj::SetCount);
+                           &Obj::getCount, &Obj::setCount);
 
 class AnotherObj : public Obj {
   DECLARE_META_OBJECT(AnotherObj);
 
 public:
-  explicit AnotherObj(const std::string& name) : Obj(name), _visible(false) {}
+  explicit AnotherObj(const std::string& name) : Obj(name), m_visible(false) {}
 
   ~AnotherObj() override = default;
 
-  bool IsVisible() const {
-    return _visible;
+  bool isVisible() const {
+    return m_visible;
   }
-  void SetVisible(bool visible) {
-    _visible = visible;
+  void setVisible(bool visible) {
+    m_visible = visible;
   }
 
 private:
-  bool _visible;
+  bool m_visible;
 };
 
 DEFINE_META_OBJECT(AnotherObj)
     .addBase(Obj::GetStaticMetaBuilder())
     .addProperty<AnotherObj, bool>("visible", "visible description",
-                                   meta::PropertyEditorType::String, &AnotherObj::IsVisible,
-                                   &AnotherObj::SetVisible);
+                                   meta::PropertyEditorType::String, &AnotherObj::isVisible,
+                                   &AnotherObj::setVisible);
 
 int main() {
   Obj obj("obj1");
@@ -87,7 +87,7 @@ int main() {
   assert(!obj.set("name", "new name"));
 
   assert(obj.set("count", "50"));
-  assert(50 == obj.GetCount());
+  assert(50 == obj.getCount());
 
   assert(obj.get("count", &testValue));
   assert(std::string("50") == testValue);
@@ -100,7 +100,7 @@ int main() {
   assert(!anotherObj.set("name", "new another obj name"));
 
   assert(anotherObj.set("visible", "false"));
-  assert(!anotherObj.IsVisible());
+  assert(!anotherObj.isVisible());
 
   assert(anotherObj.get("visible", &testValue));
   assert(std::string("false") == testValue);
