@@ -18,15 +18,17 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#include <utility>
+
 #include "meta/meta.h"
 
 class Obj : public meta::MetaObject {
   DECLARE_META_OBJECT(Obj);
 
 public:
-  Obj(const std::string& name) : _name(name), _count(0) {}
+  explicit Obj(std::string name) : _name(std::move(name)), _count(0) {}
 
-  const std::string& GetName() const { return _name; }
+  const std::string &GetName() const { return _name; }
 
   void SetCount(int value) { _count = value; }
   int GetCount() const { return _count; }
@@ -47,9 +49,9 @@ class AnotherObj : public Obj {
   DECLARE_META_OBJECT(AnotherObj);
 
 public:
-  AnotherObj(const std::string& name) : Obj(name), _visible(false) {}
+  explicit AnotherObj(const std::string &name) : Obj(name), _visible(false) {}
 
-  virtual ~AnotherObj() {}
+  ~AnotherObj() override = default;
 
   bool IsVisible() const { return _visible; }
   void SetVisible(bool visible) { _visible = visible; }

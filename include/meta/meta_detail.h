@@ -23,15 +23,12 @@
 
 #include <sstream>
 
-namespace meta {
-
-namespace detail {
+namespace meta::detail {
 
 // MetaConverter<>
 
-template <typename T>
-struct MetaConverter {
-  static bool ToString(const T& inValue, std::string* outValue) {
+template <typename T> struct MetaConverter {
+  static bool ToString(const T &inValue, std::string *outValue) {
     assert(outValue);
     std::stringstream iss;
     iss << inValue;
@@ -39,7 +36,7 @@ struct MetaConverter {
     return true;
   }
 
-  static bool FromString(const std::string& inValue, T* outValue) {
+  static bool FromString(const std::string &inValue, T *outValue) {
     assert(outValue);
     std::stringstream oss(inValue);
     oss >> *outValue;
@@ -49,14 +46,13 @@ struct MetaConverter {
 
 // We give bool it's own MetaConverter so we can convert "true" and "false" into
 // boolean values.
-template <>
-struct MetaConverter<bool> {
-  static bool ToString(bool inValue, std::string* outValue) {
+template <> struct MetaConverter<bool> {
+  static bool ToString(bool inValue, std::string *outValue) {
     *outValue = inValue ? "true" : "false";
     return true;
   }
 
-  static bool FromString(const std::string& inValue, bool* outValue) {
+  static bool FromString(const std::string &inValue, bool *outValue) {
     *outValue = (inValue == "true" || inValue == "1");
     return true;
   }
@@ -64,32 +60,26 @@ struct MetaConverter<bool> {
 
 // MetaPropertyTraits<>
 
-template <typename C, typename T>
-struct MetaPropertyTraits {
-  typedef const T& (C::*GetterType)() const;
-  typedef void (C::*SetterType)(const T&);
+template <typename C, typename T> struct MetaPropertyTraits {
+  typedef const T &(C::*GetterType)() const;
+  typedef void (C::*SetterType)(const T &);
 };
 
-template <typename C>
-struct MetaPropertyTraits<C, bool> {
+template <typename C> struct MetaPropertyTraits<C, bool> {
   typedef bool (C::*GetterType)() const;
   typedef void (C::*SetterType)(bool);
 };
 
-template <typename C>
-struct MetaPropertyTraits<C, int> {
+template <typename C> struct MetaPropertyTraits<C, int> {
   typedef int (C::*GetterType)() const;
   typedef void (C::*SetterType)(int);
 };
 
-template <typename C>
-struct MetaPropertyTraits<C, double> {
+template <typename C> struct MetaPropertyTraits<C, double> {
   typedef double (C::*GetterType)() const;
   typedef void (C::*SetterType)(double);
 };
 
-}  // namespace detail
+} // namespace meta::detail
 
-}  // namespace meta
-
-#endif  // META_DETAIL_H_
+#endif // META_DETAIL_H_
