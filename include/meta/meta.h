@@ -37,18 +37,22 @@ namespace meta {
 
 class MetaBuilder;
 
-constexpr size_t hashName(std::string_view name) {
-  if (name.empty()) {
-    return 5381u;
-  }
+namespace detail {
 
-  auto hash = static_cast<size_t>(static_cast<unsigned char>(name[0]));
-  for (size_t i = 1; i < name.size(); ++i) {
-    hash += 33 * name[i];
+constexpr inline size_t hashName(const char* name, size_t size) {
+  size_t hash = 0x811c9dc5, i = 0;
+  while (*name && i < size) {
+    hash = hash ^ (size_t)(*name++);
+    hash = hash * 16777619;
   }
-
   return hash;
 }
+
+constexpr inline size_t hashName(const std::string_view name) {
+  return hashName(name.data(), name.size());
+}
+
+} // namespace detail
 
 class MetaObject {
 public:
@@ -179,7 +183,8 @@ public:
 // Utility class to build properties for a specified class.
 class MetaBuilder {
 public:
-  MetaBuilder();
+  using PropertiesType = std::unordered_map<size_t, MetaEntry>;
+  using BasesType = std::vector<const MetaBuilder*>;
 
   MetaBuilder& addBase(const MetaBuilder* metaBuilder) {
     m_bases.push_back(metaBuilder);
@@ -191,7 +196,7 @@ public:
                            PropertyEditorType editorType,
                            typename detail::MetaPropertyTraits<C, T>::GetterType getter) {
     m_properties.insert(PropertiesType::value_type(
-        hashName(name),
+        detail::hashName(name),
         MetaEntry({name.begin(), name.end()}, {description.begin(), description.end()}, editorType,
                   std::make_shared<Property<C, T>>(getter, nullptr))));
     return *this;
@@ -203,13 +208,13 @@ public:
                            typename detail::MetaPropertyTraits<C, T>::GetterType getter,
                            typename detail::MetaPropertyTraits<C, T>::SetterType setter) {
     m_properties.insert(PropertiesType::value_type(
-        hashName(name), MetaEntry(name, description, editorType,
-                                  std::make_shared<Property<C, T>>(getter, setter))));
+        detail::hashName(name), MetaEntry(name, description, editorType,
+                                          std::make_shared<Property<C, T>>(getter, setter))));
     return *this;
   }
 
   const MetaEntry* getProperty(std::string_view name) const {
-    auto it = m_properties.find(hashName(name));
+    auto it = m_properties.find(detail::hashName(name));
     if (it != m_properties.end())
       return &it->second;
 
@@ -236,9 +241,6 @@ public:
   }
 
 private:
-  using PropertiesType = std::unordered_map<size_t, MetaEntry>;
-  using BasesType = std::vector<const MetaBuilder*>;
-
   PropertiesType m_properties;
   BasesType m_bases;
 };

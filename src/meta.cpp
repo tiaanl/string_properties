@@ -26,6 +26,4 @@ MetaObject::~MetaObject() = default;
 
 PropertyBase::~PropertyBase() = default;
 
-MetaBuilder::MetaBuilder() = default;
-
 } // namespace meta
